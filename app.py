@@ -12,7 +12,7 @@ from config import SECRET_KEY
 from functools import wraps
 from flask import session, redirect, url_for, flash
 
-
+from datetime import datetime  # Для работы с датами
 from flask import Flask, render_template, request, redirect, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -30,12 +30,16 @@ class Revs(db.Model):
     title = db.Column(db.String(300), nullable=False)
     text = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, nullable=False)
+    date = db.Column(db.DateTime, default=datetime.utcnow)  # Новый столбец
+    word_count = db.Column(db.Integer)  # Новый столбец
+
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True, nullable=False)
-    email = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
+    username = db.Column(db.String(150), nullable=False, unique=True)
+    email = db.Column(db.String(150), nullable=False, unique=True)
+    password = db.Column(db.String(300), nullable=False)
+    permission = db.Column(db.Integer, default=0)  # Новый столбец (0 - пользователь, 1 - администратор)
 
 
 class Post(db.Model):
@@ -165,6 +169,113 @@ def logout():
     session.pop('username', None)
     flash('Вы вышли из системы.', 'info')
     return redirect('/')
+
+@app.route('/profile')
+@login_required
+def profile():
+    user = User.query.get(session['user_id'])
+    if user.permission == 1:  # Администратор
+        return redirect(url_for('admin_profile'))
+    return redirect(url_for('user_profile'))
+
+
+@app.route('/user_profile')
+@login_required
+def user_profile():
+    user_id = session['user_id']
+    return render_template('user_profile.html')
+
+
+@app.route('/user_reviews', methods=['GET'])
+@login_required
+def user_reviews():
+    user_id = session['user_id']
+    reviews = Revs.query.filter_by(user_id=user_id).all()
+    return render_template('user_reviews.html', reviews=reviews)
+
+
+@app.route('/user_news', methods=['GET'])
+@login_required
+def user_news():
+    user_id = session['user_id']
+    sort_by = request.args.get('sort_by', 'date')  # Параметры сортировки
+    order = request.args.get('order', 'asc')  # asc - по возрастанию, desc - по убыванию
+
+    if sort_by == 'word_count':
+        if order == 'asc':
+            news = Post.query.filter_by(user_id=user_id).order_by(Post.word_count.asc()).all()
+        else:
+            news = Post.query.filter_by(user_id=user_id).order_by(Post.word_count.desc()).all()
+    else:  # Сортировка по дате
+        if order == 'asc':
+            news = Post.query.filter_by(user_id=user_id).order_by(Post.date.asc()).all()
+        else:
+            news = Post.query.filter_by(user_id=user_id).order_by(Post.date.desc()).all()
+
+    return render_template('user_news.html', news=news)
+
+
+@app.route('/admin_profile')
+@login_required
+def admin_profile():
+    return render_template('admin_profile.html')
+
+
+@app.route('/admin_reviews', methods=['GET'])
+@login_required
+def admin_reviews():
+    sort_by = request.args.get('sort_by', 'date')  # Сортировка
+    order = request.args.get('order', 'asc')  # Порядок
+
+    if sort_by == 'username':
+        reviews = db.session.query(Revs, User).join(User).order_by(
+            User.username.asc() if order == 'asc' else User.username.desc()
+        ).all()
+    else:
+        reviews = Revs.query.order_by(
+            Revs.date.asc() if order == 'asc' else Revs.date.desc()
+        ).all()
+
+    return render_template('admin_reviews.html', reviews=reviews)
+
+
+@app.route('/admin_news', methods=['GET'])
+@login_required
+def admin_news():
+    sort_by = request.args.get('sort_by', 'date')  # Сортировка
+    order = request.args.get('order', 'asc')  # Порядок
+
+    if sort_by == 'username':
+        news = db.session.query(Post, User).join(User).order_by(
+            User.username.asc() if order == 'asc' else User.username.desc()
+        ).all()
+    else:
+        news = Post.query.order_by(
+            Post.date.asc() if order == 'asc' else Post.date.desc()
+        ).all()
+
+    return render_template('admin_news.html', news=news)
+
+
+@app.route('/admin_users', methods=['GET', 'POST'])
+@login_required
+def admin_users():
+    if request.method == 'POST':
+        user_id = request.form.get('user_id')
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        user = User.query.get(user_id)
+        if username:
+            user.username = username
+        if password:
+            user.password = generate_password_hash(password, method='pbkdf2:sha256')
+        db.session.commit()
+        flash("Информация о пользователе обновлена", "success")
+
+    users = User.query.all()
+    return render_template('admin_users.html', users=users)
+
 
 
 
