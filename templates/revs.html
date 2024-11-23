@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Все записи
+{% endblock %}
+
+{% block content %}
+<h1>Все отзывы</h1>
+
+<div class="row">
+
+    {% for rev in revs %}
+    <div class="col-md-6 item" >
+      <div class="item-in">
+        <h4>{{ rev.title }}</h4>
+        <div class="seperator"></div>
+        <p>{{ rev.text }}</p>
+        <a href="#">ID пользователя {{ rev.user_id }}
+          <i class="fa fa-long-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}
