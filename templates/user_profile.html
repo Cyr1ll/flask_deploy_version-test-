@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Личный кабинет</h1>
+<p>Добро пожаловать, {{ session['username'] }}</p>
+<a href="{{ url_for('user_news') }}" class="btn btn-primary">Мои новости</a>
+<a href="{{ url_for('user_reviews') }}" class="btn btn-primary">Мои отзывы</a>
+{% endblock %}
+
+

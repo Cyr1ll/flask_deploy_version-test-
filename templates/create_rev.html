@@ -1,15 +1,15 @@
 {% extends 'base.html' %}
 
 {% block title %}
-Добавление записи
+Добавление отзыва
 {% endblock %}
 
 {% block content %}
 <h1>Добавление отзыва</h1>
 
 <form method="post" class="form-control">
-    <input type="text" name="title" placeholder="Введите своё имя" class="form-control"> <br>
-    <input type="text" name="text" placeholder="Введите отзыв..." class="form-control"> <br>
-    <button class="btn btn-succsess" type="submit">Добавить</button>
+    <input type="text" name="title" placeholder="Введите своё имя" class="form-control mb-3" required>
+    <textarea name="text" placeholder="Введите текст отзыва..." class="form-control mb-3" rows="5" required></textarea>
+    <button class="btn btn-success" type="submit">Добавить</button>
 </form>
 {% endblock %}

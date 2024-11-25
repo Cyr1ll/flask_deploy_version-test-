@@ -17,21 +17,21 @@ from flask import Flask, render_template, request, redirect, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
-
-
+from flask_migrate import Migrate, migrate
 
 #  Базы ДАННЫХ VV
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///newflask.db'
 db = SQLAlchemy(app)
+migrate = Migrate(app,db)
 
 class Revs(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(300), nullable=False)
     text = db.Column(db.Text, nullable=False)
-    user_id = db.Column(db.Integer, nullable=False)
-    date = db.Column(db.DateTime, default=datetime.utcnow)  # Новый столбец
-    word_count = db.Column(db.Integer)  # Новый столбец
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Связь с пользователем
+    date = db.Column(db.DateTime, default=datetime.utcnow)  # Дата написания
+    word_count = db.Column(db.Integer)  # Количество слов в отзыве
 
 
 class User(db.Model):
@@ -46,6 +46,9 @@ class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(300), nullable=False)
     text = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Связь с пользователем
+
+
 
 # БАЗЫ ДАННЫХ ^^
 
@@ -69,24 +72,29 @@ def posts():
     posts = Post.query.all()
     return render_template('posts.html', posts=posts )
 
-
 @app.route('/create', methods=['POST', 'GET'])
 @login_required
 def create():
     if request.method == 'POST':
         title = request.form['title']
         text = request.form['text']
+        user_id = session['user_id']  # ID текущего пользователя
 
-        post = Post(title=title, text=text)
+        # Создание новости
+        post = Post(title=title, text=text, user_id=user_id)
 
         try:
             db.session.add(post)
             db.session.commit()
-            return redirect('/')
+            flash("Новость успешно добавлена!", "success")
+            return redirect('/posts')
         except:
-            return "Ошибка при добавлении"
-    else:
-        return render_template('create.html')
+            flash("Ошибка при добавлении новости.", "danger")
+            return redirect('/create')
+    return render_template('create.html')
+
+
+
 
 
 @app.route('/revs')
@@ -101,18 +109,26 @@ def create_rev():
     if request.method == 'POST':
         title = request.form['title']
         text = request.form['text']
-        user_id = session['user_id']  # Получаем ID текущего пользователя из сессии
+        user_id = session['user_id']  # ID текущего пользователя
+        word_count = len(text.split())  # Подсчет количества слов
 
-        post = Revs(title=title, text=text, user_id=user_id)
+        # Создание отзыва
+        review = Revs(title=title, text=text, user_id=user_id, word_count=word_count)
 
         try:
-            db.session.add(post)
+            db.session.add(review)
             db.session.commit()
-            return redirect('/')
+            flash("Отзыв успешно добавлен!", "success")
+            return redirect('/revs')
         except:
-            return "Ошибка при добавлении"
-    else:
-        return render_template('create_rev.html')
+            flash("Ошибка при добавлении отзыва.", "danger")
+            return redirect('/create_rev')
+    return render_template('create_rev.html')
+
+
+
+
+
 
 
 
@@ -173,10 +189,17 @@ def logout():
 @app.route('/profile')
 @login_required
 def profile():
-    user = User.query.get(session['user_id'])
-    if user.permission == 1:  # Администратор
-        return redirect(url_for('admin_profile'))
-    return redirect(url_for('user_profile'))
+    user_id = session['user_id']  # ID текущего пользователя
+
+    # Получаем новости и отзывы пользователя
+    user_posts = Post.query.filter_by(user_id=user_id).all()
+    user_reviews = Revs.query.filter_by(user_id=user_id).all()
+
+    return render_template('profile.html', posts=user_posts, reviews=user_reviews)
+    # user = User.query.get(session['user_id'])
+    # if user.permission == 1:  # Администратор
+    #     return redirect(url_for('admin_profile'))
+    # return redirect(url_for('user_profile'))
 
 
 @app.route('/user_profile')

@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Личный кабинет
+{% endblock %}
+
+{% block content %}
+<h1>Личный кабинет</h1>
+
+<h2>Мои новости</h2>
+<ul>
+    {% for post in posts %}
+        <li><strong>{{ post.title }}</strong>: {{ post.text }}</li>
+    {% endfor %}
+</ul>
+
+<h2>Мои отзывы</h2>
+<ul>
+    {% for review in reviews %}
+        <li>
+            <strong>{{ review.title }}</strong>: {{ review.text }} 
+            ({{ review.word_count }} слов, написано {{ review.date.strftime('%Y-%m-%d') }})
+        </li>
+    {% endfor %}
+</ul>
+{% endblock %}
