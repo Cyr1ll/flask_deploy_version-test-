@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}RFM-анализ{% endblock %}
+
+{% block content %}
+<h1>RFM-анализ</h1>
+
+<form method="post" enctype="multipart/form-data" class="form-control">
+    <input type="file" name="file" accept=".csv" class="form-control"> <br>
+    <button type="submit" class="btn btn-primary">Запустить анализ</button>
+</form>
+{% if results is not none and not results.empty %}
+    <h2>Результаты RFM-анализа</h2>
+    <table id="rfm-table" class="table table-bordered">
+      <thead>
+          <tr>
+              <th>Имя клиента</th>
+              <th>RFM Score</th>
+              <th>Давность (Recency)</th>
+              <th>Частота (Frequency)</th>
+              <th>Сумма покупок (Monetary)</th>
+          </tr>
+      </thead>
+      <tbody>
+          {% for _, row in results.iterrows() %}
+          <tr>
+              <td>{{ row.customer_name }}</td>
+              <td>{{ row.RFM_Score }}</td>
+              <td>{{ row.recency }}</td>
+              <td>{{ row.frequency }}</td>
+              <td>{{ row.monetary }}</td>
+          </tr>
+          {% endfor %}
+      </tbody>
+</table>
+
+
+
+{% elif errors %}
+    <h2>Обнаружены ошибки:</h2>
+    <ul>
+        {% for error in errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>Загрузите файл для анализа.</p>
+{% endif %}
+{% endblock %}
+
+

@@ -585,8 +585,8 @@ def estimate_processing_time(row_count):
     return "быстрая обработка"
 
 
-@app.route('/rfm_analysis', methods=['GET', 'POST'])
-def rfm_analysis():
+@app.route('/rfm_analysis_test', methods=['GET', 'POST'])
+def rfm_analysis_test():
     errors = []
     results = None
 
@@ -642,7 +642,71 @@ def rfm_analysis():
 #
 #     return render_template('rfm_analysis.html', errors=errors, results=results, descriptions=descriptions)
 
+
 def perform_rfm_analysis(df):
+    # Проверяем, что DataFrame не пустой
+    if df is None or df.empty:
+        return "Загруженный файл пуст или отсутствует."
+
+    # Убеждаемся, что данные содержат нужные столбцы
+    required_columns = {'customer_name', 'purchase_amount', 'purchase_date'}
+    if not required_columns.issubset(df.columns):
+        return "Ошибка: файл должен содержать столбцы customer_name, purchase_amount, purchase_date."
+
+    # Преобразуем purchase_date в datetime
+    df['purchase_date'] = pd.to_datetime(df['purchase_date'], errors='coerce')
+    if df['purchase_date'].isnull().values.any():
+        return "Ошибка: неверный формат дат в столбце purchase_date."
+
+    # Удаляем строки с отсутствующими значениями
+    df = df.dropna()
+
+    # Используем текущую дату для расчета Recency
+    today = pd.Timestamp.now()
+
+    # Вычисляем RFM метрики
+    rfm_table = df.groupby('customer_name').agg({
+        'purchase_date': lambda x: (today - x.max()).days,  # Recency
+        'purchase_amount': 'sum',  # Monetary
+        'customer_name': 'count'  # Frequency (количество записей)
+    }).rename(columns={
+        'purchase_date': 'recency',
+        'purchase_amount': 'monetary',
+        'customer_name': 'frequency'
+    })
+
+    # Вычисляем квартильные пороги
+    quantiles = rfm_table.quantile(q=[0.33, 0.66]).to_dict()
+
+    # Функции для классификации на основе квартилей
+    def r_class(x):
+        if x <= quantiles['recency'][0.33]:
+            return 3
+        elif x <= quantiles['recency'][0.66]:
+            return 2
+        else:
+            return 1
+
+    def fm_class(x, column):
+        if x <= quantiles[column][0.33]:
+            return 1
+        elif x <= quantiles[column][0.66]:
+            return 2
+        else:
+            return 3
+
+    # Применяем классификацию
+    rfm_table['R'] = rfm_table['recency'].apply(r_class)
+    rfm_table['F'] = rfm_table['frequency'].apply(fm_class, column='frequency')
+    rfm_table['M'] = rfm_table['monetary'].apply(fm_class, column='monetary')
+
+    # Создаем RFM-сегменты
+    rfm_table['RFM_Score'] = rfm_table['R'].astype(str) + rfm_table['F'].astype(str) + rfm_table['M'].astype(str)
+
+    return rfm_table.reset_index()
+
+
+def perform_rfm_analysis_old(df):
     # Проверяем, что DataFrame не пустой
     if df is None or df.empty:
         return "Загруженный файл пуст или отсутствует."
@@ -694,7 +758,12 @@ def perform_rfm_analysis(df):
 
     return grouped_df.reset_index()
 
-def perform_rfm_analysis_old(df):
+
+
+
+
+
+def perform_rfm_analysis_old_old(df):
     # Проверяем, что DataFrame не пустой
     if df is None or df.empty:
         return "Загруженный файл пуст или отсутствует."
