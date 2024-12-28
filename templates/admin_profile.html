@@ -1,10 +1,57 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}
+Администраторский кабинет
+{% endblock %}
+
+{% block content %}
+<h1>Администраторский кабинет</h1>
+<h2>Ваш id - {{session['user_id']}}</h2>
+<h2>Ваше разрешение - {{session['permission']}}</h2>
+
+<!-- Новости -->
+<h2>Новости</h2>
+<div>
+    <a href="?news_sort_by=date&news_order=asc">Сортировать по дате (возрастание)</a> |
+    <a href="?news_sort_by=date&news_order=desc">Сортировать по дате (убывание)</a> |
+    <a href="?news_sort_by=words&news_order=asc">Сортировать по количеству слов (возрастание)</a> |
+    <a href="?news_sort_by=words&news_order=desc">Сортировать по количеству слов (убывание)</a>
+</div>
+<ul>
+    {% for post in posts %}
+        <li>
+            <strong>{{ post.title }}</strong>: {{ post.text }} ({{ post.word_count }} слов, {{ post.date.strftime('%Y-%m-%d') }})
+            <a href="{{ url_for('edit_news', news_id=post.id) }}" class="btn btn-outline-primary btn-sm">Редактировать</a>
+        </li>
+    {% endfor %}
+</ul>
+
+<!-- Отзывы -->
+<h2>Отзывы</h2>
+<div>
+    <a href="?review_sort_by=date&review_order=asc">Сортировать по дате (возрастание)</a> |
+    <a href="?review_sort_by=date&review_order=desc">Сортировать по дате (убывание)</a> |
+    <a href="?review_sort_by=words&review_order=asc">Сортировать по количеству слов (возрастание)</a> |
+    <a href="?review_sort_by=words&review_order=desc">Сортировать по количеству слов (убывание)</a>
+</div>
+<ul>
+    {% for review in reviews %}
+        <li>
+            <strong>{{ review.title }}</strong>: {{ review.text }} ({{ review.word_count }} слов, {{ review.date.strftime('%Y-%m-%d') }})
+            <a href="{{ url_for('edit_review', review_id=review.id) }}" class="btn btn-outline-primary btn-sm">Редактировать</a>
+        </li>
+    {% endfor %}
+</ul>
+
+<!-- Список пользователей -->
+<h2>Список пользователей</h2>
+<ul>
+{% for user in users %}
+<li>
+    ID: {{ user.id }} | Имя: {{ user.username }} | Пароль (хэш): {{ user.password }}
+    <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-outline-primary btn-sm">Редактировать</a>
+</li>
+{% endfor %}
+
+</ul>
+{% endblock %}

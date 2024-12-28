@@ -1,10 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}Редактирование новости{% endblock %}
+
+{% block content %}
+<h1>Редактирование новости</h1>
+<form method="post" class="form-control">
+    <input type="text" name="title" value="{{ news.title }}" class="form-control"> <br>
+    <textarea name="text" class="form-control">{{ news.text }}</textarea> <br>
+    <button class="btn btn-success" type="submit">Сохранить</button>
+</form>
+{% endblock %}

@@ -1,10 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}Результаты анализа{% endblock %}
+
+{% block content %}
+<h1>Результаты анализа</h1>
+{% if processing_time %}
+    <p><strong>Время обработки:</strong> {{ processing_time }}</p>
+{% else %}
+    <p><strong>Ошибки:</strong></p>
+    <ul>
+        {% for error in result %}
+            <li>{{ error }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+<a href="{{ url_for('preliminary_analysis') }}" class="btn btn-primary">Назад</a>
+{% endblock %}

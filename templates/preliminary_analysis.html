@@ -1,10 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}Предварительный анализ{% endblock %}
+
+{% block content %}
+<h1>Предварительный анализ БД</h1>
+<form method="post" enctype="multipart/form-data" class="form-control">
+    <input type="file" name="file" class="form-control"> <br>
+    <button class="btn btn-success" type="submit">Загрузить и проверить</button>
+</form>
+{% endblock %}

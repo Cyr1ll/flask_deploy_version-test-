@@ -43,8 +43,13 @@
             {% endif %}
         </ul>
 
+
+
         <div class="col-md-3 text-end">
             {% if session.get('user_id') %}
+                <a href="{{ url_for('rfm_analysis') }}" class="btn btn-outline-primary me-2">RFM анализ</a>
+                <a href="{{ url_for('preliminary_analysis') }}" class="btn btn-outline-primary me-2">Предварительный анализ</a>
+                <a href="{{ url_for('test_db') }}" class="btn btn-outline-primary me-2">ТестБД</a>
                 <a href="{{ url_for('profile') }}" class="btn btn-outline-primary me-2">Личный кабинет</a>
                 <a href="{{ url_for('logout') }}" class="btn btn-danger">Выйти</a>
             {% else %}

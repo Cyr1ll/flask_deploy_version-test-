@@ -1,10 +1,54 @@
 {% extends 'base.html' %}
 
-{% block content %}
-<h1>Личный кабинет</h1>
-<p>Добро пожаловать, {{ session['username'] }}</p>
-<a href="{{ url_for('user_news') }}" class="btn btn-primary">Мои новости</a>
-<a href="{{ url_for('user_reviews') }}" class="btn btn-primary">Мои отзывы</a>
+{% block title %}
+Личный кабинет
 {% endblock %}
 
+{% block content %}
+<h1>Мои новости</h1>
+<h3>Мой ид - {{id}}</h3>
+<h3>Мой разрешение - {{perm}}</h3>
 
+
+
+<!-- Ссылки для сортировки -->
+<div>
+    <a href="?sort_by=date&order=asc">Сортировать по дате (возрастание)</a> |
+    <a href="?sort_by=date&order=desc">Сортировать по дате (убывание)</a> |
+    <a href="?sort_by=words&order=asc">Сортировать по количеству слов (возрастание)</a> |
+    <a href="?sort_by=words&order=desc">Сортировать по количеству слов (убывание)</a>
+</div>
+
+<ul>
+    {% for post in posts %}
+        <li>
+            <strong>{{ post.title }}</strong>: {{ post.text }} ({{ post.word_count }} слов, {{ post.date.strftime('%Y-%m-%d') }})
+        </li>
+    {% endfor %}
+</ul>
+
+<h2>Мой отзыв</h2>
+
+        <ul>
+    {% for rev in revs %}
+        <li>
+            <strong>{{ rev.title }}</strong>: {{ rev.text }} ({{ rev.word_count }} слов, {{ rev.date.strftime('%Y-%m-%d') }})
+        </li>
+    {% endfor %}
+</ul>
+
+
+{% if test_db_records %}
+    <h2>Ваша тестовая БД</h2>
+    <ul>
+        {% for record in test_db_records %}
+        <li>
+            <strong>{{ record.customer_name }}</strong> купил(а) на сумму {{ record.purchase_amount }}₽
+            {{ record.purchase_date.strftime('%Y-%m-%d') }}
+        </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>ТБД не создана, нажмите <a href="{{ url_for('test_db') }}">ТестБД</a> для создания.</p>
+{% endif %}
+{% endblock %}

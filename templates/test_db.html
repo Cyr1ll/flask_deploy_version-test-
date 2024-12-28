@@ -1,10 +1,46 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}Тестовая БД{% endblock %}
+
+{% block content %}
+<h1>Тестовая БД</h1>
+
+<!-- Форма для добавления записи -->
+<form method="post" action="{{ url_for('add_test_db_record') }}" class="mb-4">
+    <div class="row">
+        <div class="col">
+            <input type="text" name="customer_name" placeholder="Имя покупателя" class="form-control" required>
+        </div>
+        <div class="col">
+            <input type="number" step="0.01" name="purchase_amount" placeholder="Сумма покупки" class="form-control" required>
+        </div>
+        <div class="col">
+            <input type="date" name="purchase_date" class="form-control" required>
+        </div>
+        <div class="col">
+            <button type="submit" class="btn btn-success">Добавить</button>
+        </div>
+    </div>
+</form>
+
+<!-- Кнопка для скачивания ТБД -->
+<form method="get" action="{{ url_for('download_test_db') }}">
+    <button class="btn btn-outline-primary">Сохранить ТБД в CSV</button>
+</form>
+
+<!-- Список записей -->
+{% if test_db_records %}
+    <ul>
+        {% for record in test_db_records %}
+        <li>
+            <strong>{{ record.customer_name }}</strong> купил(а) на сумму {{ record.purchase_amount }}₽
+            {{ record.purchase_date.strftime('%Y-%m-%d') }}
+            <a href="{{ url_for('edit_test_db_record', record_id=record.id) }}" class="btn btn-outline-primary btn-sm">Редактировать</a>
+            <a href="{{ url_for('delete_test_db_record', record_id=record.id) }}" class="btn btn-danger btn-sm">Удалить</a>
+        </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>Записи в вашей тестовой БД отсутствуют.</p>
+{% endif %}
+{% endblock %}
