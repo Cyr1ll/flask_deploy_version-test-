@@ -7,20 +7,71 @@
 {% block content %}
 <h1>Все записи</h1>
 
-<div class="row">
+<!-- Кнопки для сортировки -->
+<div class="sorting-buttons">
+    <button class="btn btn-primary" data-sort="title" data-order="asc">Заголовок (А-Я)</button>
+    <button class="btn btn-primary" data-sort="title" data-order="desc">Заголовок (Я-А)</button>
+    <button class="btn btn-primary" data-sort="date" data-order="asc">Дата (Старые сначала)</button>
+    <button class="btn btn-primary" data-sort="date" data-order="desc">Дата (Новые сначала)</button>
+    <button class="btn btn-primary" data-sort="word_count" data-order="asc">Количество слов (Меньше больше)</button>
+    <button class="btn btn-primary" data-sort="word_count" data-order="desc">Количество слов (Больше меньше)</button>
+</div>
 
+<!-- Секция для новостей -->
+<div class="row" id="posts-container">
     {% for post in posts %}
-    <div class="col-md-6 item" >
-      <div class="item-in">
-        <h4>{{ post.title }}</h4>
-        <div class="seperator"></div>
-        <p>{{ post.text }}</p>
-        <a href="#">Читать далее...
-          <i class="fa fa-long-arrow-right"></i>
-        </a>
-      </div>
+    <div class="col-md-6 item" data-title="{{ post.title }}" data-date="{{ post.date }}" data-word_count="{{ post.word_count }}">
+        <div class="item-in">
+            <h4>{{ post.title }}</h4>
+            <div class="seperator"></div>
+            <p>{{ post.text }}</p>
+            <a href="#">Читать далее...
+                <i class="fa fa-long-arrow-right"></i>
+            </a>
+        </div>
     </div>
     {% endfor %}
 </div>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const postsContainer = document.getElementById("posts-container");
+
+        // Функция для сортировки элементов
+        const sortPosts = (key, order) => {
+            const items = Array.from(postsContainer.querySelectorAll(".item"));
+
+            items.sort((a, b) => {
+                const aValue = a.dataset[key];
+                const bValue = b.dataset[key];
+
+                if (key === "date") {
+                    return order === "asc"
+                        ? new Date(aValue) - new Date(bValue)
+                        : new Date(bValue) - new Date(aValue);
+                } else if (!isNaN(parseFloat(aValue)) && !isNaN(parseFloat(bValue))) {
+                    return order === "asc"
+                        ? parseFloat(aValue) - parseFloat(bValue)
+                        : parseFloat(bValue) - parseFloat(aValue);
+                } else {
+                    return order === "asc"
+                        ? aValue.localeCompare(bValue)
+                        : bValue.localeCompare(aValue);
+                }
+            });
+
+            // Перемещаем элементы в контейнере
+            items.forEach(item => postsContainer.appendChild(item));
+        };
+
+        // Добавляем обработчики событий для кнопок
+        document.querySelectorAll(".sorting-buttons button").forEach(button => {
+            button.addEventListener("click", () => {
+                const sortKey = button.dataset.sort;
+                const sortOrder = button.dataset.order;
+                sortPosts(sortKey, sortOrder);
+            });
+        });
+    });
+</script>
 
 {% endblock %}

@@ -1,26 +1,125 @@
 {% extends 'base.html' %}
 
 {% block title %}
-Все записи
+Все отзывы
 {% endblock %}
 
 {% block content %}
 <h1>Все отзывы</h1>
 
-<div class="row">
+<!-- Фильтры для поиска и сортировки -->
+<div class="filters">
+    <div class="filter-group">
+        <label for="search-title">Поиск по названию:</label>
+        <input type="text" id="search-title" class="form-control" placeholder="Введите название">
+    </div>
+    <div class="filter-group">
+        <label for="search-text">Поиск по тексту:</label>
+        <input type="text" id="search-text" class="form-control" placeholder="Введите текст">
+    </div>
+    <div class="filter-group">
+        <label for="search-user-id">Сортировка по ID пользователя:</label>
+        <input type="number" id="search-user-id" class="form-control" placeholder="Введите ID">
+    </div>
+</div>
 
+<!-- Кнопки для сортировки -->
+<div class="sorting-buttons">
+    <button class="btn btn-primary" data-sort="title" data-order="asc">Заголовок (А-Я)</button>
+    <button class="btn btn-primary" data-sort="title" data-order="desc">Заголовок (Я-А)</button>
+    <button class="btn btn-primary" data-sort="date" data-order="asc">Дата (Старые сначала)</button>
+    <button class="btn btn-primary" data-sort="date" data-order="desc">Дата (Новые сначала)</button>
+    <button class="btn btn-primary" data-sort="word_count" data-order="asc">Количество слов (Меньше больше)</button>
+    <button class="btn btn-primary" data-sort="word_count" data-order="desc">Количество слов (Больше меньше)</button>
+</div>
+
+<!-- Секция для отзывов -->
+<div class="row" id="revs-container">
     {% for rev in revs %}
-    <div class="col-md-6 item" >
-      <div class="item-in">
-        <h4>{{ rev.title }}</h4>
-        <div class="seperator"></div>
-        <p>{{ rev.text }}</p>
-        <a href="#">ID пользователя {{ rev.user_id }}
-          <i class="fa fa-long-arrow-right"></i>
-        </a>
-      </div>
+    <div class="col-md-6 item" data-title="{{ rev.title }}" data-text="{{ rev.text }}" data-user_id="{{ rev.user_id }}" data-date="{{ rev.date }}" data-word_count="{{ rev.word_count }}">
+        <div class="item-in">
+            <h4>{{ rev.title }}</h4>
+            <div class="seperator"></div>
+            <p>{{ rev.text }}</p>
+            <a href="#">ID пользователя {{ rev.user_id }}
+                <i class="fa fa-long-arrow-right"></i>
+            </a>
+        </div>
     </div>
     {% endfor %}
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const revsContainer = document.getElementById("revs-container");
+        const searchTitleInput = document.getElementById("search-title");
+        const searchTextInput = document.getElementById("search-text");
+        const searchUserIdInput = document.getElementById("search-user-id");
+
+        // Функция для фильтрации отзывов
+        const filterRevs = () => {
+            const titleQuery = searchTitleInput.value.toLowerCase();
+            const textQuery = searchTextInput.value.toLowerCase();
+            const userIdQuery = searchUserIdInput.value.trim();
+
+            const items = Array.from(revsContainer.querySelectorAll(".item"));
+
+            items.forEach(item => {
+                const title = item.dataset.title.toLowerCase();
+                const text = item.dataset.text.toLowerCase();
+                const userId = item.dataset.user_id;
+
+                const matchesTitle = title.includes(titleQuery);
+                const matchesText = text.includes(textQuery);
+                const matchesUserId = userIdQuery ? userId === userIdQuery : true;
+
+                // Показываем или скрываем элемент на основе фильтров
+                if (matchesTitle && matchesText && matchesUserId) {
+                    item.style.display = "block";
+                } else {
+                    item.style.display = "none";
+                }
+            });
+        };
+
+        // Функция для сортировки отзывов
+        const sortRevs = (key, order) => {
+            const items = Array.from(revsContainer.querySelectorAll(".item"));
+
+            items.sort((a, b) => {
+                const aValue = a.dataset[key];
+                const bValue = b.dataset[key];
+
+                if (!isNaN(parseFloat(aValue)) && !isNaN(parseFloat(bValue))) {
+                    return order === "asc"
+                        ? parseFloat(aValue) - parseFloat(bValue)
+                        : parseFloat(bValue) - parseFloat(aValue);
+                } else {
+                    return order === "asc"
+                        ? aValue.localeCompare(bValue)
+                        : bValue.localeCompare(aValue);
+                }
+            });
+
+            // Перемещаем элементы в контейнере
+            items.forEach(item => revsContainer.appendChild(item));
+        };
+
+        // Обработчики для фильтров
+        searchTitleInput.addEventListener("input", filterRevs);
+        searchTextInput.addEventListener("input", filterRevs);
+        searchUserIdInput.addEventListener("input", filterRevs);
+
+        // Добавляем обработчики для кнопок сортировки
+        document.querySelectorAll(".sorting-buttons button").forEach(button => {
+            button.addEventListener("click", () => {
+                const sortKey = button.dataset.sort;
+                const sortOrder = button.dataset.order;
+                sortRevs(sortKey, sortOrder);
+            });
+        });
+    });
+</script>
+
 
 {% endblock %}

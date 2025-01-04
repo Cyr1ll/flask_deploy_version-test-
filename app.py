@@ -268,42 +268,64 @@ def admin_profile():
         flash("Доступ запрещен!", "danger")
         return redirect('/')
 
-    test_db_records = TestDB.query.filter_by(user_id=user_id).all()
-    # Сортировка отзывов и новостей
+    # Получение параметров сортировки и поиска
     review_sort_by = request.args.get('review_sort_by', 'date')
     review_order = request.args.get('review_order', 'desc')
-
     news_sort_by = request.args.get('news_sort_by', 'date')
     news_order = request.args.get('news_order', 'desc')
 
-    # Сортировка отзывов
-    if review_sort_by == 'words':
-        if review_order == 'asc':
-            reviews = Revs.query.order_by(Revs.word_count.asc()).all()
-        else:
-            reviews = Revs.query.order_by(Revs.word_count.desc()).all()
-    else:
-        if review_order == 'asc':
-            reviews = Revs.query.order_by(Revs.date.asc()).all()
-        else:
-            reviews = Revs.query.order_by(Revs.date.desc()).all()
+    # Параметры поиска
+    news_title_filter = request.args.get('news_title', '')
+    news_text_filter = request.args.get('news_text', '')
+    review_title_filter = request.args.get('review_title', '')
+    review_text_filter = request.args.get('review_text', '')
+    user_id_filter = request.args.get('user_id', '')
+    user_name_filter = request.args.get('user_name', '')
 
-    # Сортировка новостей
+    # Фильтрация и сортировка новостей
+    posts_query = Post.query
+    if news_title_filter:
+        posts_query = posts_query.filter(Post.title.ilike(f"%{news_title_filter}%"))
+    if news_text_filter:
+        posts_query = posts_query.filter(Post.text.ilike(f"%{news_text_filter}%"))
     if news_sort_by == 'words':
-        if news_order == 'asc':
-            posts = Post.query.order_by(Post.word_count.asc()).all()
-        else:
-            posts = Post.query.order_by(Post.word_count.desc()).all()
+        posts_query = posts_query.order_by(Post.word_count.asc() if news_order == 'asc' else Post.word_count.desc())
     else:
-        if news_order == 'asc':
-            posts = Post.query.order_by(Post.date.asc()).all()
-        else:
-            posts = Post.query.order_by(Post.date.desc()).all()
+        posts_query = posts_query.order_by(Post.date.asc() if news_order == 'asc' else Post.date.desc())
+    posts = posts_query.all()
 
-    # Получение списка пользователей, кроме администраторов
-    users = User.query.filter(User.permission == 0).all()
+    # Фильтрация и сортировка отзывов
+    reviews_query = Revs.query
+    if review_title_filter:
+        reviews_query = reviews_query.filter(Revs.title.ilike(f"%{review_title_filter}%"))
+    if review_text_filter:
+        reviews_query = reviews_query.filter(Revs.text.ilike(f"%{review_text_filter}%"))
+    if review_sort_by == 'words':
+        reviews_query = reviews_query.order_by(Revs.word_count.asc() if review_order == 'asc' else Revs.word_count.desc())
+    else:
+        reviews_query = reviews_query.order_by(Revs.date.asc() if review_order == 'asc' else Revs.date.desc())
+    reviews = reviews_query.all()
 
-    return render_template('admin_profile.html', posts=posts, reviews=reviews, users=users, test_db_records=test_db_records)
+    # Фильтрация пользователей
+    users_query = User.query.filter(User.permission == 0)
+    if user_id_filter.isdigit():
+        users_query = users_query.filter(User.id == int(user_id_filter))
+    if user_name_filter:
+        users_query = users_query.filter(User.username.ilike(f"%{user_name_filter}%"))
+    users = users_query.all()
+
+    return render_template(
+        'admin_profile.html',
+        posts=posts,
+        reviews=reviews,
+        users=users,
+        review_sort_by=review_sort_by,
+        review_order=review_order,
+        news_sort_by=news_sort_by,
+        news_order=news_order
+    )
+
+
 
 
 @app.route('/edit_news/<int:news_id>', methods=['GET', 'POST'])
@@ -608,7 +630,18 @@ def rfm_analysis_test():
             except Exception as e:
                 errors.append(f"Ошибка обработки файла: {e}")
 
-    return render_template('rfm_analysis.html', errors=errors, results=results)
+        # Получение параметров сортировки
+        sort_by = request.args.get('sort_by', 'RFM_Score')  # По умолчанию сортируем по RFM Score
+        order = request.args.get('order', 'desc')  # По умолчанию сортировка по убыванию
+
+        # Пример использования pandas DataFrame для сортировки
+        if results is not None and not results.empty:
+            ascending = (order == 'asc')  # Преобразуем строку в булево значение
+            results = results.sort_values(by=sort_by, ascending=ascending)
+
+    return render_template('rfm_analysis_test.html', errors=errors, results=results)
+
+
 # def rfm_analysis():
 #     errors = []
 #     results = {}

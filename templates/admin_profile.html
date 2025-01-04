@@ -6,17 +6,27 @@
 
 {% block content %}
 <h1>Администраторский кабинет</h1>
-<h2>Ваш id - {{session['user_id']}}</h2>
-<h2>Ваше разрешение - {{session['permission']}}</h2>
+<h2>Ваш id - {{ session['user_id'] }}</h2>
+<h2>Ваше разрешение - {{ session['permission'] }}</h2>
+
+<!-- Форма поиска и сортировки новостей -->
+<h2>Поиск и сортировка новостей</h2>
+<form method="get" action="/admin_profile">
+    <input type="text" name="news_title" placeholder="Поиск по заголовку">
+    <input type="text" name="news_text" placeholder="Поиск по тексту">
+    <select name="news_sort_by">
+        <option value="date" {% if news_sort_by == 'date' %}selected{% endif %}>Дата</option>
+        <option value="words" {% if news_sort_by == 'words' %}selected{% endif %}>Количество слов</option>
+    </select>
+    <select name="news_order">
+        <option value="asc" {% if news_order == 'asc' %}selected{% endif %}>Возрастание</option>
+        <option value="desc" {% if news_order == 'desc' %}selected{% endif %}>Убывание</option>
+    </select>
+    <button type="submit" class="btn btn-primary">Применить</button>
+</form>
 
 <!-- Новости -->
 <h2>Новости</h2>
-<div>
-    <a href="?news_sort_by=date&news_order=asc">Сортировать по дате (возрастание)</a> |
-    <a href="?news_sort_by=date&news_order=desc">Сортировать по дате (убывание)</a> |
-    <a href="?news_sort_by=words&news_order=asc">Сортировать по количеству слов (возрастание)</a> |
-    <a href="?news_sort_by=words&news_order=desc">Сортировать по количеству слов (убывание)</a>
-</div>
 <ul>
     {% for post in posts %}
         <li>
@@ -26,14 +36,24 @@
     {% endfor %}
 </ul>
 
+<!-- Форма поиска и сортировки отзывов -->
+<h2>Поиск и сортировка отзывов</h2>
+<form method="get" action="/admin_profile">
+    <input type="text" name="review_title" placeholder="Поиск по заголовку">
+    <input type="text" name="review_text" placeholder="Поиск по тексту">
+    <select name="review_sort_by">
+        <option value="date" {% if review_sort_by == 'date' %}selected{% endif %}>Дата</option>
+        <option value="words" {% if review_sort_by == 'words' %}selected{% endif %}>Количество слов</option>
+    </select>
+    <select name="review_order">
+        <option value="asc" {% if review_order == 'asc' %}selected{% endif %}>Возрастание</option>
+        <option value="desc" {% if review_order == 'desc' %}selected{% endif %}>Убывание</option>
+    </select>
+    <button type="submit" class="btn btn-primary">Применить</button>
+</form>
+
 <!-- Отзывы -->
 <h2>Отзывы</h2>
-<div>
-    <a href="?review_sort_by=date&review_order=asc">Сортировать по дате (возрастание)</a> |
-    <a href="?review_sort_by=date&review_order=desc">Сортировать по дате (убывание)</a> |
-    <a href="?review_sort_by=words&review_order=asc">Сортировать по количеству слов (возрастание)</a> |
-    <a href="?review_sort_by=words&review_order=desc">Сортировать по количеству слов (убывание)</a>
-</div>
 <ul>
     {% for review in reviews %}
         <li>
@@ -43,15 +63,22 @@
     {% endfor %}
 </ul>
 
+<!-- Форма поиска пользователей -->
+<h2>Поиск пользователей</h2>
+<form method="get" action="/admin_profile">
+    <input type="text" name="user_id" placeholder="Поиск по ID">
+    <input type="text" name="user_name" placeholder="Поиск по имени пользователя">
+    <button type="submit" class="btn btn-primary">Поиск</button>
+</form>
+
 <!-- Список пользователей -->
 <h2>Список пользователей</h2>
 <ul>
 {% for user in users %}
-<li>
-    ID: {{ user.id }} | Имя: {{ user.username }} | Пароль (хэш): {{ user.password }}
-    <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-outline-primary btn-sm">Редактировать</a>
-</li>
+    <li>
+        ID: {{ user.id }} | Имя: {{ user.username }} | Пароль (хэш): {{ user.password }}
+        <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-outline-primary btn-sm">Редактировать</a>
+    </li>
 {% endfor %}
-
 </ul>
 {% endblock %}

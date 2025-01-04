@@ -5,48 +5,117 @@
 {% endblock %}
 
 {% block content %}
-<h3>Мой ид - {{id}}</h3>
+<h3>Ваш ид - {{id}}</h3>
+<h2>Вы можете нажимать на заголовки столбцов для сортировки</h2>
+
 <h1>Мои новости</h1>
+<table id="news-table" class="table table-bordered">
+    <thead>
+        <tr>
+            <th data-sort="title">Заголовок</th>
+            <th data-sort="word_count">Количество слов</th>
+            <th data-sort="date">Дата</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for post in posts %}
+        <tr>
+            <td>{{ post.title }}</td>
+            <td>{{ post.word_count }}</td>
+            <td>{{ post.date.strftime('%Y-%m-%d') }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
-<!-- <h3>Мой разрешение - {{perm}}</h3> -->
-<!-- Ссылки для сортировки -->
-<div>
-    <a href="?sort_by=date&order=asc">Сортировать по дате (возрастание)</a> |
-    <a href="?sort_by=date&order=desc">Сортировать по дате (убывание)</a> |
-    <a href="?sort_by=words&order=asc">Сортировать по количеству слов (возрастание)</a> |
-    <a href="?sort_by=words&order=desc">Сортировать по количеству слов (убывание)</a>
-</div>
 
-<ul>
-    {% for post in posts %}
-        <li>
-            <strong>{{ post.title }}</strong>: {{ post.text }} ({{ post.word_count }} - количество слов, {{ post.date.strftime('%Y-%m-%d') }})
-        </li>
-    {% endfor %}
-</ul>
+<h2>Мои отзывы</h2>
+<table id="reviews-table" class="table table-bordered">
+    <thead>
+        <tr>
+            <th data-sort="title">Заголовок</th>
+            <th data-sort="word_count">Количество слов</th>
+            <th data-sort="date">Дата</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for rev in revs %}
+        <tr>
+            <td>{{ rev.title }}</td>
+            <td>{{ rev.word_count }}</td>
+            <td>{{ rev.date.strftime('%Y-%m-%d') }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
-<h2>Мой отзывы</h2>
-
-        <ul>
-    {% for rev in revs %}
-        <li>
-            <strong>{{ rev.title }}</strong>: {{ rev.text }} ({{ rev.word_count }} - количество слов, {{ rev.date.strftime('%Y-%m-%d') }})
-        </li>
-    {% endfor %}
-</ul>
-
+<h2>Тестовая БД</h2>
+<table id="test-db-table" class="table table-bordered">
+    <thead>
+        <tr>
+            <th data-sort="customer_name">Имя клиента</th>
+            <th data-sort="purchase_amount">Сумма покупки</th>
+            <th data-sort="purchase_date">Дата покупки</th>
+        </tr>
+    </thead>
+    <tbody>
 
 {% if test_db_records %}
-    <h2>Ваша тестовая БД</h2>
-    <ul>
-        {% for record in test_db_records %}
-        <li>
-            <strong>{{ record.customer_name }}</strong> купил(а) на сумму {{ record.purchase_amount }}₽
-            {{ record.purchase_date.strftime('%Y-%m-%d') }}
-        </li>
-        {% endfor %}
-    </ul>
+    {% for record in test_db_records %}
+        <tr>
+            <td>{{ record.customer_name }}</td>
+            <td>{{ record.purchase_amount }}</td>
+            <td>{{ record.purchase_date.strftime('%Y-%m-%d') }}</td>
+        </tr>
+    {% endfor %}
 {% else %}
-    <p>ТБД не создана, нажмите <a href="{{ url_for('test_db') }}">ТестБД</a> для создания.</p>
+    <tr>
+        <td colspan="3">Нет записей. Нажмите "ТестБД" для создания таблицы.</td>
+    </tr>
 {% endif %}
+
+
+    </tbody>
+</table>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        // Функция сортировки таблицы
+        const sortTable = (table, column, ascending) => {
+            const tbody = table.querySelector("tbody");
+            const rows = Array.from(tbody.querySelectorAll("tr"));
+
+            rows.sort((a, b) => {
+                const aValue = a.querySelectorAll("td")[column].innerText.trim();
+                const bValue = b.querySelectorAll("td")[column].innerText.trim();
+
+                if (!isNaN(parseFloat(aValue)) && !isNaN(parseFloat(bValue))) {
+                    // Числовая сортировка
+                    return ascending
+                        ? parseFloat(aValue) - parseFloat(bValue)
+                        : parseFloat(bValue) - parseFloat(aValue);
+                } else {
+                    // Лексикографическая сортировка
+                    return ascending
+                        ? aValue.localeCompare(bValue)
+                        : bValue.localeCompare(aValue);
+                }
+            });
+
+            // Обновляем таблицу
+            rows.forEach(row => tbody.appendChild(row));
+        };
+
+        // Инициализация сортировки для каждой таблицы
+        document.querySelectorAll("table").forEach(table => {
+            table.querySelectorAll("th").forEach((th, index) => {
+                th.addEventListener("click", () => {
+                    const isAscending = th.classList.toggle("ascending");
+                    sortTable(table, index, isAscending);
+                });
+            });
+        });
+    });
+</script>
+
+
 {% endblock %}
