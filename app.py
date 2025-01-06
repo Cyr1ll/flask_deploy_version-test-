@@ -13,25 +13,34 @@ from functools import wraps
 from flask import session, redirect, url_for, flash, request, flash
 
 from datetime import datetime, date,timedelta  # Для работы с датами
-from flask import Flask, render_template, request, redirect, flash, session
+from flask import Flask, render_template, request, redirect, flash, session, send_file, Response
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from flask_migrate import Migrate, migrate
 from faker import Faker
 import random
-
+import io
 from extensions import db
 from models import TestDB
 import os
 import pandas as pd
-
+from matplotlib import pyplot as plt
+from fpdf import FPDF
 import csv
 import io
 from flask import make_response
-
+import tempfile
 import sklearn
 from sklearn.preprocessing import MinMaxScaler
+
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
 
 #  Базы ДАННЫХ VV
 app = Flask(__name__)
@@ -400,6 +409,7 @@ def view_test_db():
 
 faker = Faker()
 
+
 @app.route('/test_db', methods=['GET', 'POST'])
 @login_required
 def test_db():
@@ -409,13 +419,22 @@ def test_db():
     existing_records = TestDB.query.filter_by(user_id=user_id).all()
 
     if not existing_records:
-        # Генерация 10 случайных записей
-        for _ in range(10):
+        # Список популярных имён
+        popular_names = [faker.name() for i in range(10)]#"Иван Иванов", "Анна Смирнова", "Сергей Кузнецов", "Мария Иванова", "Алексей Петров"
+
+        # Генерация 20 случайных записей
+        for _ in range(220):
+            # Выбор имени: 70% вероятность взять из популярного списка, 30% сгенерировать случайное
+            if random.random() < 0.7:
+                customer_name = random.choice(popular_names)
+            else:
+                customer_name = faker.name()
+
             new_record = TestDB(
                 user_id=user_id,
                 purchase_amount=round(random.uniform(10, 500), 2),
                 purchase_date=date.today() - timedelta(days=random.randint(1, 365)),
-                customer_name=faker.name()
+                customer_name=customer_name
             )
             db.session.add(new_record)
         db.session.commit()
@@ -619,6 +638,7 @@ def estimate_processing_time(row_count):
 
 @app.route('/rfm_analysis_test', methods=['GET', 'POST'])
 def rfm_analysis_test():
+    global results
     errors = []
     results = None
 
@@ -649,41 +669,10 @@ def rfm_analysis_test():
             ascending = (order == 'asc')  # Преобразуем строку в булево значение
             results = results.sort_values(by=sort_by, ascending=ascending)
 
+
+
     return render_template('rfm_analysis_test.html', errors=errors, results=results)
 
-
-# def rfm_analysis():
-#     errors = []
-#     results = {}
-#     descriptions = {
-#         "111": "Недавние, частые, высокие суммы",
-#         "112": "Недавние, частые, средние суммы",
-#         "113": "Недавние, частые, низкие суммы",
-#         "123": "Недавние, редкие, низкие суммы",
-#         "213": "Средние по давности, редкие, низкие суммы",
-#         "333": "Давние, редкие, низкие суммы",
-#         # Добавьте остальные категории
-#     }
-#
-#     if request.method == 'POST':
-#         file = request.files['file']
-#         if not file:
-#             errors.append("Файл не был загружен.")
-#             return render_template('rfm_analysis.html', errors=errors)
-#
-#         try:
-#             df = pd.read_csv(file)
-#             validation_errors, processing_time = analyze_uploaded_file(df)  # Разделяем кортеж
-#
-#             if validation_errors:  # Проверяем только список ошибок
-#                 errors.extend(validation_errors)
-#             else:
-#                 print("RFM Analysis is starting...")  # Для отладки
-#                 results = perform_rfm_analysis(df)
-#         except Exception as e:
-#             errors.append(f"Ошибка обработки файла: {e}")
-#
-#     return render_template('rfm_analysis.html', errors=errors, results=results, descriptions=descriptions)
 
 
 def perform_rfm_analysis(df):
@@ -802,6 +791,207 @@ def perform_rfm_analysis_old(df):
     return grouped_df.reset_index()
 
 
+
+@app.route('/download_excel', methods=['GET'])
+def download_excel():
+    global results
+    if 'results' not in globals() or results is None:
+        return "Результаты анализа отсутствуют.", 400
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        results.to_excel(writer, index=False, sheet_name='RFM Analysis')
+        writer._save()
+    output.seek(0)
+
+    return send_file(output, as_attachment=True, download_name="rfm_analysis.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+
+# Регистрация шрифта DejaVu Sans
+pdfmetrics.registerFont(TTFont('DejaVu', r'C:\Users\kiril\PycharmProjects\newflask\DejaVuSans.ttf'))  # Укажите путь к вашему файлу DejaVuSans.ttf            C:\Users\kiril\PycharmProjects\newflask\DejaVuSans
+pdfmetrics.registerFont(TTFont('DejaVu-Bold', r'C:\Users\kiril\PycharmProjects\newflask\DejaVuSans-Bold.ttf'))
+
+# Функция для создания диаграммы
+def create_rfm_chart_reportlab(rfm_results):
+    segment_counts = rfm_results['RFM_Score'].value_counts()
+    labels = segment_counts.index
+    sizes = segment_counts.values
+
+    plt.figure(figsize=(10, 6))
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140, textprops={'fontsize': 12})
+    plt.title('Распределение клиентов по сегментам', fontsize=16)
+
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    chart_path = temp_file.name
+    plt.savefig(chart_path)
+    plt.close()
+    return chart_path
+
+# Функция для создания PDF-отчёта
+@app.route('/download_pdf', methods=['GET'])
+def download_pdf_reportlab():
+    global results  # Используем глобальную переменную для результатов RFM
+    if results is None or results.empty:
+        return "Результаты анализа отсутствуют.", 400
+
+    chart_path = create_rfm_chart_reportlab(results)
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # Используем стиль с поддержкой DejaVu
+    styles['Title'].fontName = 'DejaVu'
+    styles['Normal'].fontName = 'DejaVu'
+    styles['Heading2'].fontName = 'DejaVu'
+
+    # Заголовок
+    elements.append(Paragraph("RFM-анализ клиентов", styles["Title"]))
+    elements.append(Spacer(1, 12))
+
+    # Диаграмма
+    if os.path.exists(chart_path):
+        elements.append(Image(chart_path, width=400, height=300))
+        elements.append(Spacer(1, 12))
+    else:
+        elements.append(Paragraph("Диаграмма отсутствует.", styles["Normal"]))
+
+    # Таблица
+    elements.append(Paragraph("Данные RFM-анализа:", styles["Heading2"]))
+    table_data = [["Имя клиента", "RFM Score", "Recency", "Frequency", "Monetary"]]
+    for _, row in results.iterrows():
+        table_data.append([
+            row['customer_name'], row['RFM_Score'], row['recency'], row['frequency'], row['monetary']
+        ])
+
+    table = Table(table_data, colWidths=[100, 80, 80, 80, 80])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'DejaVu-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    ]))
+    elements.append(table)
+
+    elements.append(Spacer(1, 12))
+    elements.append(Paragraph("Отчёт завершён.", styles["Normal"]))
+
+    doc.build(elements)
+    buffer.seek(0)
+
+    if os.path.exists(chart_path):
+        os.remove(chart_path)
+
+    return send_file(buffer, as_attachment=True, download_name="rfm_analysis_report.pdf", mimetype='application/pdf')
+
+
+# # Функция для создания диаграммы на основе RFM-результатов
+# def create_rfm_chart(rfm_results):
+#     segment_counts = rfm_results['RFM_Score'].value_counts()
+#     labels = segment_counts.index
+#     sizes = segment_counts.values
+#
+#     plt.figure(figsize=(10, 6))
+#     plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140, textprops={'fontsize': 12})
+#     plt.title('Распределение клиентов по сегментам', fontsize=16)
+#
+#     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+#     chart_path = temp_file.name
+#     plt.savefig(chart_path)
+#     plt.close()
+#     return chart_path
+#
+# # Функция для создания PDF-отчёта
+# @app.route('/download_pdf', methods=['GET'])
+# def download_pdf():
+#     global results  # Используем глобальную переменную для результатов RFM
+#     if results is None or results.empty:
+#         return "Результаты анализа отсутствуют.", 400
+#
+#     chart_path = create_rfm_chart(results)
+#
+#     pdf = FPDF()
+#     pdf.add_page()
+#
+#     # Добавляем шрифт с поддержкой кириллицы
+#     font_path = r"C:\Users\kiril\PycharmProjects\newflask\DejaVuSans"
+#     bold_font_path = r"C:\Users\kiril\PycharmProjects\newflask\DejaVuSans-Bold"
+#     pdf.add_font("DejaVu", style="", fname=font_path, uni=True)
+#     pdf.add_font("DejaVu-Bold", style="B", fname=bold_font_path, uni=True)
+#
+#     pdf.set_font("DejaVu-Bold", size=16)
+#
+#     # Заголовок
+#     pdf.cell(200, 10, txt="RFM-анализ клиентов", ln=True, align="C")
+#
+#     # Вставляем диаграмму
+#     if os.path.exists(chart_path):
+#         pdf.image(chart_path, x=10, y=30, w=190)
+#     else:
+#         pdf.cell(200, 10, txt="Диаграмма отсутствует", ln=True, align="C")
+#
+#     pdf.ln(85)
+#     pdf.set_font("DejaVu", size=12)
+#     pdf.cell(200, 10, txt="Распределение клиентов по сегментам:", ln=True)
+#
+#     # Перечисляем клиентов по сегментам
+#     for score, group in results.groupby('RFM_Score'):
+#         pdf.ln(10)
+#         pdf.set_font("DejaVu-Bold", size=12)
+#         pdf.cell(200, 10, txt=f"Сегмент {score}:", ln=True)
+#         pdf.set_font("DejaVu", size=10)
+#         for _, row in group.iterrows():
+#             pdf.cell(0, 10, f"Клиент: {row['customer_name']}, RFM Score: {row['RFM_Score']}, "
+#                              f"Recency: {row['recency']}, Frequency: {row['frequency']}, Monetary: {row['monetary']}", ln=True)
+#
+#     output = io.BytesIO()
+#     pdf.output(output)
+#     output.seek(0)
+#
+#     # Удаляем временный файл
+#     if os.path.exists(chart_path):
+#         os.remove(chart_path)
+#
+#     return send_file(output, as_attachment=True, download_name="rfm_analysis.pdf", mimetype='application/pdf')
+
+
+# def rfm_analysis():
+#     errors = []
+#     results = {}
+#     descriptions = {
+#         "111": "Недавние, частые, высокие суммы",
+#         "112": "Недавние, частые, средние суммы",
+#         "113": "Недавние, частые, низкие суммы",
+#         "123": "Недавние, редкие, низкие суммы",
+#         "213": "Средние по давности, редкие, низкие суммы",
+#         "333": "Давние, редкие, низкие суммы",
+#         # Добавьте остальные категории
+#     }
+#
+#     if request.method == 'POST':
+#         file = request.files['file']
+#         if not file:
+#             errors.append("Файл не был загружен.")
+#             return render_template('rfm_analysis.html', errors=errors)
+#
+#         try:
+#             df = pd.read_csv(file)
+#             validation_errors, processing_time = analyze_uploaded_file(df)  # Разделяем кортеж
+#
+#             if validation_errors:  # Проверяем только список ошибок
+#                 errors.extend(validation_errors)
+#             else:
+#                 print("RFM Analysis is starting...")  # Для отладки
+#                 results = perform_rfm_analysis(df)
+#         except Exception as e:
+#             errors.append(f"Ошибка обработки файла: {e}")
+#
+#     return render_template('rfm_analysis.html', errors=errors, results=results, descriptions=descriptions)
 
 
 
