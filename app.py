@@ -66,6 +66,9 @@ class Post(db.Model):
     word_count = db.Column(db.Integer, nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)  # Новое поле
 
+    def recalculate_word_count(self):
+        self.word_count = len(self.text.split())
+
 
 
 # БАЗЫ ДАННЫХ ^^
@@ -340,6 +343,7 @@ def edit_news(news_id):
     if request.method == 'POST':
         news.title = request.form['title']
         news.text = request.form['text']
+        news.recalculate_word_count()
         db.session.commit()
         flash("Новость успешно обновлена.", "success")
         return redirect(url_for('admin_profile'))
@@ -425,18 +429,21 @@ def test_db():
 @login_required
 def edit_test_db_record(record_id):
     record = TestDB.query.get_or_404(record_id)
-    # Проверяем, что пользователь владеет записью
-    if record.user_id != session['user_id']:
+    current_user_id = session.get('user_id')
+    current_user = User.query.get_or_404(current_user_id)
+
+    # Проверка доступа: владелец записи или администратор
+    if record.user_id != current_user_id and current_user.permission != 1:
         flash("Вы не можете редактировать эту запись", "danger")
         return redirect(url_for('test_db'))
 
     if request.method == 'POST':
-        record.customer_name = request.form['buyer_name']
+        record.customer_name = request.form['customer_name']
         record.purchase_amount = request.form['purchase_amount']
         record.purchase_date = datetime.strptime(request.form['purchase_date'], '%Y-%m-%d')
         db.session.commit()
         flash("Запись успешно обновлена", "success")
-        return redirect(url_for('test_db'))
+        return redirect(url_for('test_db') if current_user.permission == 0 else url_for('edit_test_db_user', user_id=record.user_id))
 
     return render_template('edit_test_db.html', record=record)
 
@@ -463,15 +470,18 @@ def add_test_db_record():
 @login_required
 def delete_test_db_record(record_id):
     record = TestDB.query.get_or_404(record_id)
-    # Проверяем, что пользователь владеет записью
-    if record.user_id != session['user_id']:
+    current_user_id = session.get('user_id')
+    current_user = User.query.get_or_404(current_user_id)
+
+    # Проверка доступа: владелец записи или администратор
+    if record.user_id != current_user_id and current_user.permission != 1:
         flash("Вы не можете удалить эту запись", "danger")
         return redirect(url_for('test_db'))
 
     db.session.delete(record)
     db.session.commit()
     flash("Запись успешно удалена", "success")
-    return redirect(url_for('test_db'))
+    return redirect(url_for('test_db') if current_user.permission == 0 else url_for('edit_test_db_user', user_id=record.user_id))
 
 
 @app.route('/download_test_db')
@@ -840,6 +850,38 @@ def perform_rfm_analysis_old_old(df):
 
     return rfm_df
 
+@app.route('/edit_test_db_user/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def edit_test_db_user(user_id):
+    # Проверяем, что текущий пользователь - администратор
+    current_user_id = session.get('user_id')
+    current_user = User.query.get_or_404(current_user_id)
+    if current_user.permission != 1:
+        flash("Доступ запрещен!", "danger")
+        return redirect('/')
+
+    # Получаем записи TestDB для выбранного пользователя
+    test_db_records = TestDB.query.filter_by(user_id=user_id).all()
+    selected_user = User.query.get_or_404(user_id)
+
+    if request.method == 'POST':
+        # Обработка добавления новой записи
+        customer_name = request.form.get('customer_name')
+        purchase_amount = request.form.get('purchase_amount')
+        purchase_date = request.form.get('purchase_date')
+
+        new_record = TestDB(
+            user_id=user_id,
+            customer_name=customer_name,
+            purchase_amount=purchase_amount,
+            purchase_date=datetime.strptime(purchase_date, '%Y-%m-%d'),
+        )
+        db.session.add(new_record)
+        db.session.commit()
+        flash("Новая запись добавлена!", "success")
+        return redirect(url_for('edit_test_db_user', user_id=user_id))
+
+    return render_template('edit_test_db_user.html', test_db_records=test_db_records, user=selected_user)
 
 
 

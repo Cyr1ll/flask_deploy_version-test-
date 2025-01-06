@@ -78,6 +78,7 @@
     <li>
         ID: {{ user.id }} | Имя: {{ user.username }} | Пароль (хэш): {{ user.password }}
         <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-outline-primary btn-sm">Редактировать</a>
+        <a href="{{ url_for('edit_test_db_user', user_id=user.id) }}" class="btn btn-outline-secondary btn-sm">Редактировать ТестБД</a>
     </li>
 {% endfor %}
 </ul>
