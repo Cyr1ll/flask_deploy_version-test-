@@ -420,10 +420,10 @@ def test_db():
 
     if not existing_records:
         # Список популярных имён
-        popular_names = [faker.name() for i in range(10)]#"Иван Иванов", "Анна Смирнова", "Сергей Кузнецов", "Мария Иванова", "Алексей Петров"
+        popular_names = [faker.name() for i in range(150)]#"Иван Иванов", "Анна Смирнова", "Сергей Кузнецов", "Мария Иванова", "Алексей Петров"
 
         # Генерация 20 случайных записей
-        for _ in range(220):
+        for _ in range(520):
             # Выбор имени: 70% вероятность взять из популярного списка, 30% сгенерировать случайное
             if random.random() < 0.7:
                 customer_name = random.choice(popular_names)
@@ -707,6 +707,8 @@ def perform_rfm_analysis(df):
         'customer_name': 'frequency'
     })
 
+    rfm_table['monetary'] = rfm_table['monetary'].round(2)
+
     # Вычисляем квартильные пороги
     quantiles = rfm_table.quantile(q=[0.33, 0.66]).to_dict()
 
@@ -828,12 +830,27 @@ def create_rfm_chart_reportlab(rfm_results):
     plt.close()
     return chart_path
 
+# Функция для определения категории клиента
+def get_client_category(score):
+    recency = int(str(score)[0])
+    frequency = int(str(score)[1])
+    monetary = int(str(score)[2])
+
+    recency_map = {3: "недавние", 2: "спящие", 1: "давние"}
+    frequency_map = {3: "частые", 2: "редкие", 1: "разовые"}
+    monetary_map = {3: "с высоким чеком", 2: "средним чеком", 1: "с низким чеком"}
+
+    return f"{recency_map[recency]} {frequency_map[frequency]} {monetary_map[monetary]}"
+
 # Функция для создания PDF-отчёта
 @app.route('/download_pdf', methods=['GET'])
 def download_pdf_reportlab():
     global results  # Используем глобальную переменную для результатов RFM
     if results is None or results.empty:
         return "Результаты анализа отсутствуют.", 400
+
+    # Округление значения Monetary до 2 знаков
+    results['monetary'] = results['monetary'].round(2)
 
     chart_path = create_rfm_chart_reportlab(results)
 
@@ -842,7 +859,7 @@ def download_pdf_reportlab():
     styles = getSampleStyleSheet()
     elements = []
 
-    # Используем стиль с поддержкой DejaVu
+    # Настройка стилей
     styles['Title'].fontName = 'DejaVu'
     styles['Normal'].fontName = 'DejaVu'
     styles['Heading2'].fontName = 'DejaVu'
@@ -858,7 +875,7 @@ def download_pdf_reportlab():
     else:
         elements.append(Paragraph("Диаграмма отсутствует.", styles["Normal"]))
 
-    # Таблица
+    # Таблица с результатами
     elements.append(Paragraph("Данные RFM-анализа:", styles["Heading2"]))
     table_data = [["Имя клиента", "RFM Score", "Recency", "Frequency", "Monetary"]]
     for _, row in results.iterrows():
@@ -877,6 +894,17 @@ def download_pdf_reportlab():
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
     ]))
     elements.append(table)
+    elements.append(Spacer(1, 12))
+
+    # Добавление клиентов по категориям
+    elements.append(Paragraph("Распределение клиентов по категориям:", styles["Heading2"]))
+    grouped = results.groupby('RFM_Score')
+    for score, group in grouped:
+        category = get_client_category(score)
+        elements.append(Paragraph(f"<b>{category} ({score}):</b>", styles["Normal"]))
+        for _, row in group.iterrows():
+            elements.append(Paragraph(f"- {row['customer_name']}", styles["Normal"]))
+        elements.append(Spacer(1, 6))
 
     elements.append(Spacer(1, 12))
     elements.append(Paragraph("Отчёт завершён.", styles["Normal"]))
