@@ -1,0 +1,9 @@
+Flask
+Flask-SQLAlchemy
+Flask-Migrate
+Faker
+pandas
+matplotlib
+fpdf2
+scikit-learn
+reportlab
