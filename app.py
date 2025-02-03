@@ -41,6 +41,7 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
+from dotenv import load_dotenv
 
 #  Базы ДАННЫХ VV
 app = Flask(__name__)
@@ -811,8 +812,17 @@ def download_excel():
 
 
 # Регистрация шрифта DejaVu Sans
-pdfmetrics.registerFont(TTFont('DejaVu', r'C:\Users\kiril\PycharmProjects\newflask\DejaVuSans.ttf'))  # Укажите путь к вашему файлу DejaVuSans.ttf            C:\Users\kiril\PycharmProjects\newflask\DejaVuSans
-pdfmetrics.registerFont(TTFont('DejaVu-Bold', r'C:\Users\kiril\PycharmProjects\newflask\DejaVuSans-Bold.ttf'))
+#pdfmetrics.registerFont(TTFont('DejaVu', r'C:\Users\kiril\PycharmProjects\newflask\DejaVuSans.ttf'))  # Укажите путь к вашему файлу DejaVuSans.ttf            C:\Users\kiril\PycharmProjects\newflask\DejaVuSans
+#pdfmetrics.registerFont(TTFont('DejaVu-Bold', r'C:\Users\kiril\PycharmProjects\newflask\DejaVuSans-Bold.ttf'))
+
+#грузим переменные из .env, если он есть
+load_dotenv()
+
+font_dir = os.getenv('FONT_PATH',os.path.dirname(__file__))
+
+pdfmetrics.registerFont(TTFont('DejaVu', os.path.join(font_dir,'DejaVuSans.ttf')))
+pdfmetrics.registerFont(TTFont('DejaVu-Bold', os.path.join(font_dir,'DejaVuSans-Bold.ttf')))
+
 
 # Функция для создания диаграммы
 def create_rfm_chart_reportlab(rfm_results):

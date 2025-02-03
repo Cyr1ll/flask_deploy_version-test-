@@ -7,3 +7,5 @@ matplotlib
 fpdf2
 scikit-learn
 reportlab
+python-dotenv
+
