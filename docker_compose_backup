@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  flask_app:
+    build: .
+    expose:
+      - "5000"
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    depends_on:
+      - flask_app
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - etc-letsencrypt:/etc/letsencrypt
+      - www-html:/var/www/html
+  certbot:
+    image: certbot/certbot
+    depends_on:
+      - nginx
+    container_name: certbot
+    volumes:
+      - etc-letsencrypt:/etc/letsencrypt
+      - www-html:/var/www/html
+    command: certonly --webroot --webroot-path=/var/www/html --email kirill.konratev.04@gmail.com --agree-tos --no-eff-email -d cyrillonline.ru -d www.cyrillonline.ru
+volumes:
+  www-html:
+  etc-letsencrypt:
